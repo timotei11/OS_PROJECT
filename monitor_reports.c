@@ -4,14 +4,6 @@
  *
  * compile: gcc monitor_reports.c -o monitor_reports
  * usage:   ./monitor_reports
- *
- * Behaviour:
- *   - On startup: writes its PID to .monitor_pid
- *   - On SIGUSR1: prints a message (sent by city_manager --add)
- *   - On SIGINT:  prints a goodbye message and exits, deleting .monitor_pid
- *   - Runs forever until SIGINT is received
- *
- * Uses sigaction() as required by the spec (NOT signal()).
  */
 
 #include <stdio.h>
