@@ -1,96 +1,57 @@
-# ai_usage.md — AI-Assisted Filter Functions
-
-## Context
-
-This file documents the use of AI assistance for the two helper functions
-in the `filter` command, as explicitly permitted by the project specification.
-
----
+# AI_usage-phases_1_and_2.md
 
 ## Tool Used
-
-**Claude (claude-sonnet-4-6)** via the claude.ai web interface.
-
----
-
-## Prompts Given and What Was Generated
-
-### Function 1: `parse_condition`
-
-**Prompt:**
-> "I have a C struct called `Report` and a filter command that receives
-> conditions as strings in the format `field:operator:value`, for example
-> `severity:>=:2` or `category:==:road`. Write a function:
-> `int parse_condition(const char *input, char *field, char *op, char *value);`
-> that splits the string into the three parts. Field, op, and value are
-> output parameters. Return 1 on success, 0 if the string is malformed."
-
-**What was generated:**
-The AI generated a function using `strchr()` to find the two `:` separators,
-computing the lengths of each segment, using `strncpy` for the first two parts
-and `strcpy` for the remainder (value). The logic was clean and correct.
-
-**What I changed:**
-Nothing structural — the logic was correct. I added a comment explaining each
-step so I can describe it at the presentation.
-
-**What I learned:**
-`strchr()` returns a pointer to the first occurrence of the character, which
-makes pointer arithmetic (`p2 - (p1 + 1)`) a clean way to measure the
-operator's length without any loop.
+Claude (claude.ai)
 
 ---
 
-### Function 2: `match_condition`
+## Phase 1
 
-**Prompt:**
-> "Using the same Report struct (fields: int id, char inspector[64],
-> double lat, double lon, char category[32], int severity, time_t timestamp,
-> char description[80]), write a function:
-> `int match_condition(Report *r, const char *field, const char *op, const char *value);`
-> that returns 1 if the record satisfies the condition, 0 otherwise.
-> Supported fields: severity, category, inspector, timestamp.
-> Supported operators: ==, !=, <, <=, >, >=."
+I used Claude for the two filter functions as allowed by the spec.
 
-**What was generated:**
-A chain of `strcmp(field, ...)` checks, with nested `strcmp(op, ...)` for each
-operator. For integer fields (severity) it used `atoi()`. For string fields it
-used `strcmp()`.
+### parse_condition
 
-**What I changed / what I had to fix:**
-1. The AI initially **omitted the `timestamp` branch** entirely. I added it
-   myself, using `atol()` (not `atoi()`) because `time_t` is a `long` on
-   64-bit Linux and epoch values do not fit in an `int`.
-2. The AI applied `<`, `<=`, `>`, `>=` to string fields, which is technically
-   valid C but meaningless for category/inspector names. I removed those
-   operators from string fields and added a comment explaining why.
-3. The AI did not include a fallback `else` for unknown field names. I added
-   a `fprintf(stderr, "Warning: unknown filter field...")` branch.
+**Prompt:** asked Claude to write a function that splits a string like
+`severity:>=:2` into field, operator and value.
 
-**What I learned:**
-- `atoi()` silently truncates large Unix timestamps — always use `atol()` for
-  `time_t`.
-- AI-generated code often handles the "happy path" well but skips edge cases
-  like unknown operators, unknown fields, or type overflow. These must always
-  be reviewed manually.
-- The spec says "review both functions line by line" — this exercise shows why:
-  the timestamp omission would have caused a silent compile error or crash at
-  runtime.
+**What was generated:** used strchr() to find the colons and pointer
+arithmetic to get the lengths. It worked fine.
+
+**What I changed:** nothing, just added some comments.
+
+**What I learned:** you can subtract two pointers to get a string length,
+didn't know that before.
 
 ---
 
-## Critical Evaluation
+### match_condition
 
-| Aspect                         | Assessment |
+**Prompt:** asked Claude to write a function that checks if a Report record
+matches a condition (field, operator, value).
 
-| Correctness                    | Mostly correct; timestamp branch missing |
-| Completeness                   | Good for the happy path; missing edge cases |
-| Safety                         | No buffer overflows; uses strncpy appropriately |
-| Clarity                        | Clean, readable code |
-| What required my own judgement |Type selection(atol vs atoi), removing nonsensical
-                                  operators from string fields, adding error fallback |
+**What was generated:** a chain of strcmp() checks for each field. Used
+atoi() for severity, strcmp() for strings.
 
-The functions were a useful starting point, but required non-trivial review
-and modification before they were production-ready. This matches the spec's
-intent: AI as a tool for accelerating boilerplate, not a replacement for
-understanding.
+**What I had to fix:**
+1. timestamp branch was missing — added it myself, also changed atoi() to
+   atol() because time_t is a long and timestamps overflow an int
+2. had <, > operators on string fields which makes no sense — removed them
+3. no warning for unknown fields — added one myself
+
+**What I learned:** atoi() silently overflows on timestamps. AI handles
+the easy cases but misses type-related edge cases.
+
+---
+
+## Phase 2
+
+## Phase 2
+
+Wrote most of the Phase 2 code myself. I asked Claude to help me with
+the signal handler setup in monitor_reports.c — specifically how to use
+sigaction() correctly, since I hadn't used it before. I reviewed the
+generated code and adapted it to fit my program.
+
+I also asked two conceptual questions:
+- why use `volatile sig_atomic_t` in signal handlers (compiler optimization)
+- why `pause()` instead of `sleep()` in the monitor loop (no CPU waste)
