@@ -1,11 +1,3 @@
-/*
- * city_manager.c - City Infrastructure Issue Reporting System
- * OS Project - Phase 1 + Phase 2
- *
- * compile: gcc city_manager.c -o city_manager
- * usage:   ./city_manager --role <manager|inspector> --user <name> --<command> <district> [args...]
- */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -70,12 +62,6 @@ void log_action(const char *district, const char *role,
                 const char *user, const char *action) {
     char log_path[512];
     snprintf(log_path, sizeof(log_path), "%s/logged_district", district);
-
-    struct stat st;
-    if (stat(log_path, &st) == 0) {
-        if (strcmp(role, "inspector") == 0 && !(st.st_mode & S_IWGRP))
-            return;
-    }
 
     int fd = open(log_path, O_WRONLY | O_APPEND | O_CREAT, PERM_LOG);
     if (fd < 0) return;
