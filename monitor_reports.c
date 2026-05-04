@@ -1,11 +1,3 @@
-/*
- * monitor_reports.c - Background monitor for city infrastructure reports
- * OS Project - Phase 2
- *
- * compile: gcc monitor_reports.c -o monitor_reports
- * usage:   ./monitor_reports
- */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
