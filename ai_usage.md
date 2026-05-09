@@ -47,9 +47,4 @@ Phase 2
 
 Wrote most of the Phase 2 code myself. I asked Claude to help me with
 the signal handler setup in monitor_reports.c — specifically how to use
-sigaction() correctly, since I hadn't used it before. I reviewed the
-generated code and adapted it to fit my program.
-
-I also asked two conceptual questions:
-- why use `volatile sig_atomic_t` in signal handlers (compiler optimization)
-- why `pause()` instead of `sleep()` in the monitor loop (no CPU waste)
+sigaction() correctly, since I hadn't used it before. 

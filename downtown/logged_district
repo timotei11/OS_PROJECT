@@ -1,0 +1,16 @@
+[2026-04-25 11:54:13] alice manager add
+[2026-04-25 12:06:00] alice manager list
+[2026-05-02 17:28:11] alice manager add
+[2026-05-02 17:28:11] alice manager monitor notified via SIGUSR1
+[2026-05-02 17:31:15] alice manager add
+[2026-05-02 17:31:15] alice manager monitor could not be notified
+[2026-05-09 14:05:14] bob manager add
+[2026-05-09 14:05:14] bob manager monitor could not be notified
+[2026-05-09 14:08:02] marcel inspector add
+[2026-05-09 14:08:02] marcel inspector monitor could not be notified
+[2026-05-09 14:08:35] marcel inspector list
+[2026-05-09 14:09:37] bob manager remove_report
+[2026-05-09 14:09:51] bob manager remove_report
+[2026-05-09 14:09:59] marcel inspector list
+[2026-05-09 14:10:14] bob manager remove_report
+[2026-05-09 14:10:18] marcel inspector list
