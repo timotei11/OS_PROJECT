@@ -1,15 +1,13 @@
-AI_usage-phases_1_and_2.md
+# AI_usage-All_Phases.md
 
-Tool Used
+## Tool Used
 Claude (claude.ai)
 
 ---
 
-Phase 1
+## Phase 1
 
-I used Claude for the two filter functions as allowed by the spec.
-
-parse_condition
+**parse_condition**
 
 Prompt: asked Claude to write a function that splits a string like
 `severity:>=:2` into field, operator and value.
@@ -24,7 +22,7 @@ didn't know that before.
 
 ---
 
-match_condition
+**match_condition**
 
 Prompt: asked Claude to write a function that checks if a Report record
 matches a condition (field, operator, value).
@@ -43,8 +41,56 @@ the easy cases but misses type-related edge cases.
 
 ---
 
-Phase 2
+## Phase 2
 
-Wrote most of the Phase 2 code myself. I asked Claude to help me with
-the signal handler setup in monitor_reports.c — specifically how to use
-sigaction() correctly, since I hadn't used it before. 
+**monitor_reports.c**
+
+Prompt: asked Claude for a working example of sigaction() usage and
+the pause() loop pattern, since I hadn't used either before.
+
+What I changed: integrated the pattern into my own program structure,
+added fflush(stdout) after printf calls so output appears immediately.
+
+What I learned: pause() suspends the process until a signal arrives
+without busy-waiting. volatile sig_atomic_t is needed for flags shared
+between the main loop and signal handlers.
+
+---
+
+**remove_district**
+
+Prompt: asked Claude how to use fork() and execvp() to run an
+external command and wait for it to finish.
+
+What I changed: added the manager-only role check and the symlink
+cleanup after the directory was removed.
+
+---
+
+## Phase 3
+
+**monitor_reports.c**
+
+Prompt: asked Claude to help add duplicate monitor detection and a
+structured message format so hub_mon can parse monitor output over a pipe.
+
+What I learned: kill(pid, 0) doesn't send a real signal — it only
+checks if the process exists.
+
+---
+
+**scorer.c**
+
+Prompt: asked Claude to write the scorer program that reads
+reports.dat, sums severities per inspector, and prints results to stdout.
+
+
+
+**city_hub.c**
+
+Prompt: asked Claude to help implement the hub with start_monitor
+and calculate_scores using fork(), pipe(), and dup2().
+
+**What I changed:** added detection of both QUIT and ERROR as shutdown
+signals in hub_mon, and the check for an already-running hub_mon before
+starting a new one.

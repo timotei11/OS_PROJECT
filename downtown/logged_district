@@ -14,3 +14,6 @@
 [2026-05-09 14:09:59] marcel inspector list
 [2026-05-09 14:10:14] bob manager remove_report
 [2026-05-09 14:10:18] marcel inspector list
+[2026-05-19 22:03:07] bob inspector add
+[2026-05-19 22:03:07] bob inspector monitor notified via SIGUSR1
+[2026-05-19 22:10:01] alice manager list
