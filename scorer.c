@@ -1,18 +1,3 @@
-/*
- * scorer.c  —  Phase 3 external scorer program
- *
- * Usage:  scorer <district>
- *
- * Reads <district>/reports.dat (binary Report records), aggregates the
- * severity sum per inspector, and prints a plain-text workload summary to
- * stdout.  city_hub redirects stdout to a pipe via dup2() before exec().
- *
- * Output format (one line per inspector, sorted by score descending):
- *   SCORE <district> <inspector> <total_severity> <report_count>
- * followed by a terminator line:
- *   SCORE_DONE <district>
- */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,7 +5,7 @@
 #include <unistd.h>
 #include <time.h>
 
-/* ── must match city_manager.c ─────────────────────────────────────────── */
+//match city_manager
 typedef struct {
     int    id;
     char   inspector[64];
@@ -32,7 +17,7 @@ typedef struct {
     char   description[80];
 } Report;
 
-/* ── per-inspector accumulator ─────────────────────────────────────────── */
+// per-inspector accumulator
 #define MAX_INSPECTORS 256
 
 typedef struct {
@@ -58,14 +43,14 @@ static InspectorScore *find_or_create(const char *name) {
     return s;
 }
 
-/* ── comparison for qsort (descending total_severity) ───────────────────── */
+// comparison for qsort (descending total_severity)
 static int cmp_score(const void *a, const void *b) {
     const InspectorScore *sa = (const InspectorScore *)a;
     const InspectorScore *sb = (const InspectorScore *)b;
     return sb->total_severity - sa->total_severity;   /* descending */
 }
 
-/* ── main ───────────────────────────────────────────────────────────────── */
+
 int main(int argc, char *argv[]) {
     if (argc < 2) {
         fprintf(stderr, "Usage: scorer <district>\n");

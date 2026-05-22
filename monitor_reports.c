@@ -8,14 +8,14 @@
  
 #define MONITOR_PID_FILE ".monitor_pid"
  
-/* ── signal flags ───────────────────────────────────────────────────────── */
+// signal flags 
 static volatile sig_atomic_t got_sigusr1 = 0;
 static volatile sig_atomic_t got_sigint  = 0;
  
 static void handler_sigusr1(int sig) { (void)sig; got_sigusr1 = 1; }
 static void handler_sigint (int sig) { (void)sig; got_sigint  = 1; }
  
-/* ── helpers ────────────────────────────────────────────────────────────── */
+// helpers
  
 /*
  * emit()  —  write one structured line to stdout.
@@ -35,7 +35,7 @@ static void get_timestamp(char *buf, size_t size) {
     strftime(buf, size, "%Y-%m-%d %H:%M:%S", tm_info);
 }
  
-/* ── PID-file helpers ───────────────────────────────────────────────────── */
+// PID-file helpers
  
 /*
  * read_pid_file()
@@ -75,11 +75,10 @@ static void delete_pid_file(void) {
     unlink(MONITOR_PID_FILE);
 }
  
-/* ── main ───────────────────────────────────────────────────────────────── */
+// main
  
 int main(void) {
- 
-    /* ── Phase 3: duplicate-monitor check ─────────────────────────────── */
+  
     pid_t existing = read_pid_file();
     if (existing > 0) {
         /*
@@ -87,22 +86,22 @@ int main(void) {
          * exists without actually sending a signal.
          */
         if (kill(existing, 0) == 0) {
-            /* Process is alive — report the conflict and exit. */
+            // Process is alive — report the conflict and exit.
             char errbuf[128];
             snprintf(errbuf, sizeof(errbuf),
                      "Another monitor is already running with PID %d — aborting",
                      (int)existing);
             emit("ERROR", errbuf);
-            /* flush is implicit because emit() uses write(), not stdio */
+            // flush is implicit because emit() uses write(), not stdio
             return 1;
         }
-        /* Stale PID file — safe to overwrite */
+        // Stale PID file — safe to overwrite
     }
  
-    /* ── write our own PID file ────────────────────────────────────────── */
+    // write our own PID file 
     write_pid_file();
  
-    /* ── announce ourselves ────────────────────────────────────────────── */
+    // announce ourselves
     {
         char buf[128];
         snprintf(buf, sizeof(buf),
@@ -111,7 +110,7 @@ int main(void) {
         emit("READY", buf);
     }
  
-    /* ── set up signal handlers ────────────────────────────────────────── */
+    // set up signal handlers
     struct sigaction sa_usr1, sa_int;
  
     sa_usr1.sa_handler = handler_sigusr1;
@@ -134,9 +133,9 @@ int main(void) {
  
     emit("INFO", "Waiting for signals (SIGUSR1=new report, SIGINT=quit)");
  
-    /* ── main loop ─────────────────────────────────────────────────────── */
+    // main loop
     while (1) {
-        pause();   /* suspend until any signal arrives */
+        pause();   // suspend until any signal arrives
  
         char tbuf[32];
         get_timestamp(tbuf, sizeof(tbuf));
@@ -158,7 +157,7 @@ int main(void) {
         }
     }
  
-    /* ── cleanup ───────────────────────────────────────────────────────── */
+    // cleanup
     delete_pid_file();
     emit("QUIT", ".monitor_pid deleted — goodbye");
     return 0;
