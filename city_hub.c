@@ -1,27 +1,3 @@
-/*
- * city_hub.c  —  Phase 3 interactive hub
- *
- * Commands:
- *   start_monitor
- *       Forks hub_mon, which in turn forks the monitor_reports executable.
- *       hub_mon connects a pipe so the monitor's stdout flows to it, then
- *       relays every line to the hub's terminal.  Only one monitor may run
- *       at a time (monitor_reports itself enforces this via .monitor_pid).
- *
- *   calculate_scores <district> [<district2> ...]
- *       For each named district, forks a scorer process (./scorer <district>)
- *       with its stdout redirected to a pipe.  Reads all scorers concurrently,
- *       then prints a combined workload report once every scorer has finished.
- *
- *   quit  (or Ctrl-D)
- *       Exit the hub.
- *
- * Build:
- *   gcc -Wall -Wextra -o city_hub   city_hub.c
- *   gcc -Wall -Wextra -o monitor_reports monitor_reports.c
- *   gcc -Wall -Wextra -o scorer     scorer.c
- */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -32,16 +8,16 @@
 #include <errno.h>
 #include <signal.h>
 
-/* ── constants ──────────────────────────────────────────────────────────── */
+// constants
 #define MAX_DISTRICTS  64
 #define LINE_MAX_LEN   512
 #define MONITOR_EXE    "./monitor_reports"
 #define SCORER_EXE     "./scorer"
 
-/* ── global: PID of the hub_mon middle process ───────────────────────────── */
+// global: PID of the hub_mon middle process
 static pid_t hub_mon_pid = -1;
 
-/* ── utility: read one '\n'-terminated line from fd ─────────────────────── */
+// utility: read one '\n'-terminated line from fd
 /*
  * Returns number of bytes stored in buf (including '\0'), or 0 on EOF/error.
  * Reads byte-by-byte — fine for pipe traffic which is low-volume.
@@ -62,16 +38,7 @@ static int read_line(int fd, char *buf, int max) {
     return i;
 }
 
-/* ── start_monitor ───────────────────────────────────────────────────────── */
-/*
- * hub_mon body — runs inside the child after the first fork().
- * Creates a pipe, forks monitor_reports with its stdout→pipe write-end,
- * then relays lines from the pipe to its own stdout (which is the terminal).
- *
- * Message format produced by monitor_reports:
- *   MSG:<TYPE>:<text>\n
- * We strip the MSG: prefix and display "[monitor/<TYPE>] <text>".
- */
+// start_monitor
 static void hub_mon_body(void) {
     int pipefd[2];
     if (pipe(pipefd) < 0) {
@@ -86,8 +53,8 @@ static void hub_mon_body(void) {
     }
 
     if (mon_pid == 0) {
-        /* ── child: become monitor_reports ────────────────────────────── */
-        /* redirect stdout → pipe write-end */
+        // child: become monitor_reports
+        // redirect stdout -> pipe write-end
         close(pipefd[0]);
         if (dup2(pipefd[1], STDOUT_FILENO) < 0) {
             perror("dup2");
@@ -102,8 +69,8 @@ static void hub_mon_body(void) {
         exit(1);
     }
 
-    /* ── hub_mon parent: read from pipe read-end ───────────────────────── */
-    close(pipefd[1]);   /* hub_mon doesn't write to the pipe */
+    // hub_mon parent: read from pipe read-end
+    close(pipefd[1]);   // hub_mon doesn't write to the pipe
 
     char line[LINE_MAX_LEN];
     int monitor_alive = 1;
@@ -111,13 +78,13 @@ static void hub_mon_body(void) {
     while (monitor_alive) {
         int n = read_line(pipefd[0], line, sizeof(line));
         if (n == 0) {
-            /* Pipe closed — monitor exited */
+            // Pipe closed — monitor exited
             printf("[hub_mon] Monitor pipe closed (monitor has exited)\n");
             fflush(stdout);
             break;
         }
 
-        /* Strip trailing newline for clean display */
+        // Strip trailing newline for clean display
         int len = strlen(line);
         if (len > 0 && line[len - 1] == '\n') line[--len] = '\0';
 
@@ -135,11 +102,11 @@ static void hub_mon_body(void) {
                 printf("[monitor/%s] %s\n", type, text);
                 fflush(stdout);
 
-                /* QUIT means the monitor is shutting down */
+                // QUIT means the monitor is shutting down
                 if (strcmp(type, "QUIT") == 0) {
                     monitor_alive = 0;
                 }
-                /* ERROR also means the monitor ended (duplicate check) */
+                // ERROR also means the monitor ended (duplicate check)
                 if (strcmp(type, "ERROR") == 0) {
                     monitor_alive = 0;
                 }
@@ -155,7 +122,7 @@ static void hub_mon_body(void) {
 
     close(pipefd[0]);
 
-    /* Wait for the monitor child to avoid a zombie */
+    // Wait for the monitor child to avoid a zombie
     int status;
     waitpid(mon_pid, &status, 0);
     if (WIFEXITED(status))
@@ -165,7 +132,7 @@ static void hub_mon_body(void) {
         printf("[hub_mon] monitor_reports terminated abnormally\n");
     fflush(stdout);
 
-    exit(0);   /* hub_mon itself exits */
+    exit(0);   // hub_mon itself exits
 }
 
 /*
@@ -175,7 +142,7 @@ static void hub_mon_body(void) {
  */
 static void cmd_start_monitor(void) {
     if (hub_mon_pid > 0) {
-        /* Check whether the previous hub_mon is still alive */
+        // Check whether the previous hub_mon is still alive
         int status;
         pid_t r = waitpid(hub_mon_pid, &status, WNOHANG);
         if (r == 0) {
@@ -183,7 +150,7 @@ static void cmd_start_monitor(void) {
                    (int)hub_mon_pid);
             return;
         }
-        /* It has exited — allow a new one */
+        // It has exited — allow a new one
         hub_mon_pid = -1;
     }
 
@@ -193,29 +160,29 @@ static void cmd_start_monitor(void) {
         return;
     }
     if (pid == 0) {
-        /* child: become hub_mon */
+        // child: become hub_mon
         hub_mon_body();
-        /* never reached */
+        // never reached
         exit(1);
     }
 
-    /* parent: remember hub_mon's PID */
+    // parent: remember hub_mon's PID
     hub_mon_pid = pid;
     printf("[hub] hub_mon started (PID=%d) — monitor output will appear above\n",
            (int)hub_mon_pid);
 }
 
-/* ── calculate_scores ────────────────────────────────────────────────────── */
+// calculate_scores
 
 typedef struct {
     char  district[128];
-    int   pipe_rd;          /* read-end of the scorer's stdout pipe */
+    int   pipe_rd;          // read-end of the scorer's stdout pipe
     pid_t pid;
 } ScorerJob;
 
-/*
- * Accumulated lines from all scorers, printed at the end.
- */
+
+ //Accumulated lines from all scorers, printed at the end.
+ 
 typedef struct {
     char district[128];
     char inspector[64];
@@ -246,7 +213,7 @@ static void parse_score_line(const char *line) {
 static int cmp_score_lines(const void *a, const void *b) {
     const ScoreLine *sa = (const ScoreLine *)a;
     const ScoreLine *sb = (const ScoreLine *)b;
-    /* Sort by district ascending, then severity descending */
+    // Sort by district ascending, then severity descending
     int d = strcmp(sa->district, sb->district);
     if (d != 0) return d;
     return sb->total_severity - sa->total_severity;
@@ -268,12 +235,12 @@ static void cmd_calculate_scores(char **districts, int num_districts) {
         return;
     }
 
-    /* Reset accumulated results */
+    // Reset accumulated results 
     num_score_lines = 0;
 
     ScorerJob jobs[MAX_DISTRICTS];
 
-    /* ── spawn one scorer per district ────────────────────────────────── */
+    // spawn one scorer per district
     int active = 0;
     for (int i = 0; i < num_districts; i++) {
         int pipefd[2];
@@ -291,7 +258,7 @@ static void cmd_calculate_scores(char **districts, int num_districts) {
         }
 
         if (pid == 0) {
-            /* ── scorer child ─────────────────────────────────────────── */
+            // scorer child
             close(pipefd[0]);
             if (dup2(pipefd[1], STDOUT_FILENO) < 0) {
                 perror("dup2 scorer");
@@ -303,7 +270,7 @@ static void cmd_calculate_scores(char **districts, int num_districts) {
             exit(1);
         }
 
-        /* ── parent: record the job ───────────────────────────────────── */
+        // parent: record the job
         close(pipefd[1]);
         strncpy(jobs[active].district, districts[i],
                 sizeof(jobs[active].district) - 1);
@@ -313,24 +280,19 @@ static void cmd_calculate_scores(char **districts, int num_districts) {
         active++;
     }
 
-    /* ── collect output from all scorers ─────────────────────────────── */
-    /*
-     * Simple approach: read each scorer's pipe to completion in order.
-     * For a small number of districts this is perfectly fine; if scorers
-     * were slow or produced large output, a select()/poll() loop would be
-     * preferable.
-     */
+    // collect output from all scorers
+    
     for (int i = 0; i < active; i++) {
         char line[LINE_MAX_LEN];
         while (read_line(jobs[i].pipe_rd, line, sizeof(line)) > 0) {
-            /* Strip newline */
+            // Strip newline
             int len = strlen(line);
             if (len > 0 && line[len - 1] == '\n') line[--len] = '\0';
 
             if (strncmp(line, "SCORE_ERROR", 11) == 0) {
                 printf("[hub] Scorer warning: %s\n", line + 12);
             } else if (strncmp(line, "SCORE_DONE", 10) == 0) {
-                /* terminator — nothing to do */
+                // terminator — nothing to do
             } else if (strncmp(line, "SCORE ", 6) == 0) {
                 parse_score_line(line);
             }
@@ -341,7 +303,7 @@ static void cmd_calculate_scores(char **districts, int num_districts) {
         waitpid(jobs[i].pid, &status, 0);
     }
 
-    /* ── print combined report ────────────────────────────────────────── */
+    // print combined report
     if (num_score_lines == 0) {
         printf("[hub] No workload data found for the specified districts.\n");
         return;
@@ -373,8 +335,7 @@ static void cmd_calculate_scores(char **districts, int num_districts) {
     printf("\n");
 }
 
-/* ── command parser ─────────────────────────────────────────────────────── */
-
+// command parser 
 static void trim_newline(char *s) {
     int len = strlen(s);
     while (len > 0 && (s[len - 1] == '\n' || s[len - 1] == '\r'))
@@ -397,20 +358,14 @@ static int tokenise(char *buf, char **tokens, int max_tokens) {
     return n;
 }
 
-/* ── main ───────────────────────────────────────────────────────────────── */
 
 int main(void) {
     /*
-     * Ignore SIGCHLD with SA_NOCLDWAIT so zombie hub_mon / scorer processes
-     * are automatically reaped.  We still call waitpid() explicitly where we
-     * need the exit status, but this prevents leaked zombies for any process
-     * we don't explicitly wait for.
-     *
-     * Note: we do explicit waitpid() for scorer jobs and hub_mon in
+     * we do explicit waitpid() for scorer jobs and hub_mon in
      * cmd_start_monitor(), so the behaviour is still deterministic.
      */
     struct sigaction sa_chld;
-    sa_chld.sa_handler = SIG_DFL;   /* keep default — we waitpid() explicitly */
+    sa_chld.sa_handler = SIG_DFL;   // keep default — we waitpid()
     sigemptyset(&sa_chld.sa_mask);
     sa_chld.sa_flags = SA_NOCLDSTOP;
     sigaction(SIGCHLD, &sa_chld, NULL);
@@ -425,12 +380,12 @@ int main(void) {
         fflush(stdout);
 
         if (fgets(buf, sizeof(buf), stdin) == NULL) {
-            /* EOF (Ctrl-D) */
+            // EOF (Ctrl-D)
             printf("\n[hub] EOF — exiting\n");
             break;
         }
         trim_newline(buf);
-        if (buf[0] == '\0') continue;   /* blank line */
+        if (buf[0] == '\0') continue;   // blank line
 
         char *tokens[MAX_DISTRICTS + 2];
         int ntok = tokenise(buf, tokens, MAX_DISTRICTS + 2);
@@ -457,11 +412,6 @@ int main(void) {
         printf("      Commands: start_monitor | calculate_scores <district>... | quit\n");
     }
 
-    /*
-     * If hub_mon is still running, leave it — it will be orphaned and
-     * continue relaying monitor output until the monitor exits.
-     * Alternatively you could kill(hub_mon_pid, SIGTERM) here.
-     */
     if (hub_mon_pid > 0) {
         int status;
         pid_t r = waitpid(hub_mon_pid, &status, WNOHANG);
